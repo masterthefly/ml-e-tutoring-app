@@ -1,0 +1,201 @@
+/* Learning path styles */
+
+.learning-path {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow);
+}
+
+.learning-path__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.learning-path__container {
+  position: relative;
+}
+
+.learning-path__track {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.learning-path__step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+}
+
+.learning-path__step-connector {
+  position: absolute;
+  left: 20px;
+  top: 40px;
+  bottom: -24px;
+  width: 2px;
+  background-color: var(--border-color);
+}
+
+.learning-path__step:last-child .learning-path__step-connector {
+  display: none;
+}
+
+.learning-path__step--completed .learning-path__step-connector {
+  background-color: var(--success-color);
+}
+
+.learning-path__step--in-progress .learning-path__step-connector {
+  background: linear-gradient(to bottom, var(--primary-color) 50%, var(--border-color) 50%);
+}
+
+.learning-path__step-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  width: 100%;
+  transition: all 0.2s ease-in-out;
+}
+
+.learning-path__step--available .learning-path__step-content {
+  border-color: var(--primary-color);
+  background-color: rgba(37, 99, 235, 0.05);
+}
+
+.learning-path__step--completed .learning-path__step-content {
+  border-color: var(--success-color);
+  background-color: rgba(5, 150, 105, 0.05);
+}
+
+.learning-path__step--in-progress .learning-path__step-content {
+  border-color: var(--warning-color);
+  background-color: rgba(217, 119, 6, 0.05);
+}
+
+.learning-path__step--locked .learning-path__step-content {
+  opacity: 0.6;
+}
+
+.learning-path__step-icon {
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.learning-path__step--completed .learning-path__step-icon {
+  border-color: var(--success-color);
+  background-color: var(--success-color);
+  color: white;
+}
+
+.learning-path__step--in-progress .learning-path__step-icon {
+  border-color: var(--warning-color);
+  background-color: var(--warning-color);
+  color: white;
+}
+
+.learning-path__step--available .learning-path__step-icon {
+  border-color: var(--primary-color);
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.learning-path__step-info {
+  flex: 1;
+}
+
+.learning-path__step-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.learning-path__step-status {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.learning-path__step-percentage {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.learning-path__step-action {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.learning-path__step-action:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.learning-path__step-action--continue {
+  background-color: var(--warning-color);
+}
+
+.learning-path__step-action--continue:hover {
+  background-color: #b45309;
+}
+
+.learning-path__empty {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .learning-path {
+    padding: var(--spacing-lg);
+  }
+  
+  .learning-path__step-content {
+    padding: var(--spacing-sm);
+  }
+  
+  .learning-path__step-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1.25rem;
+  }
+  
+  .learning-path__step-connector {
+    left: 16px;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .learning-path__step-content {
+    border-width: 2px;
+  }
+  
+  .learning-path__step-icon {
+    border-width: 3px;
+  }
+}

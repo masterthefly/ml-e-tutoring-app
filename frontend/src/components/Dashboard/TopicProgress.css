@@ -1,0 +1,146 @@
+/* Topic progress styles */
+
+.topic-progress {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow);
+}
+
+.topic-progress__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.topic-progress__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.topic-progress__item {
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease-in-out;
+}
+
+.topic-progress__item:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+}
+
+.topic-progress__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.topic-progress__info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.topic-progress__mastery-icon {
+  font-size: 1.25rem;
+}
+
+.topic-progress__name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.topic-progress__stats {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.topic-progress__percentage {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.topic-progress__mastery {
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.topic-progress__bar {
+  margin-bottom: var(--spacing-sm);
+  background-color: var(--bg-tertiary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  width: 100%;
+  background-color: var(--bg-tertiary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease-in-out;
+}
+
+.topic-progress__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.topic-progress__empty {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .topic-progress {
+    padding: var(--spacing-lg);
+  }
+  
+  .topic-progress__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .topic-progress__stats {
+    align-self: flex-end;
+  }
+  
+  .topic-progress__meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .topic-progress__item {
+    border-width: 2px;
+  }
+  
+  .topic-progress__item:hover {
+    border-width: 2px;
+  }
+}

@@ -1,0 +1,67 @@
+/* Progress dashboard styles */
+
+.progress-dashboard {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.progress-dashboard--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.progress-dashboard__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.progress-dashboard__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: var(--spacing-xl);
+  grid-template-areas:
+    "overview topics"
+    "path analytics";
+}
+
+.progress-dashboard__overview {
+  grid-area: overview;
+}
+
+.progress-dashboard__topics {
+  grid-area: topics;
+}
+
+.progress-dashboard__path {
+  grid-area: path;
+}
+
+.progress-dashboard__analytics {
+  grid-area: analytics;
+}
+
+/* Tablet responsive */
+@media (max-width: 1023px) {
+  .progress-dashboard__grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "overview"
+      "topics"
+      "path"
+      "analytics";
+    gap: var(--spacing-lg);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .progress-dashboard__grid {
+    gap: var(--spacing-md);
+  }
+}

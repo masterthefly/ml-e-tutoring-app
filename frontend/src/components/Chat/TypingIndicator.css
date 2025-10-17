@@ -1,0 +1,84 @@
+/* Typing indicator styles */
+
+.typing-indicator {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-lg);
+  opacity: 0.8;
+}
+
+.typing-indicator__avatar {
+  margin-right: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.typing-indicator__content {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 18px 18px 18px 4px;
+  padding: var(--spacing-md);
+  max-width: 200px;
+}
+
+.typing-indicator__header {
+  margin-bottom: var(--spacing-sm);
+}
+
+.typing-indicator__agent {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--primary-color);
+}
+
+.typing-indicator__animation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.typing-indicator__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--text-secondary);
+  animation: typing-bounce 1.4s infinite ease-in-out;
+}
+
+.typing-indicator__dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator__dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+.typing-indicator__dot:nth-child(3) {
+  animation-delay: 0s;
+}
+
+@keyframes typing-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .typing-indicator__content {
+    padding: var(--spacing-sm);
+    max-width: 150px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .typing-indicator__dot {
+    animation: none;
+    opacity: 0.7;
+  }
+}
