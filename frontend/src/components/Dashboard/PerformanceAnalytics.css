@@ -1,0 +1,127 @@
+/* Performance analytics styles */
+
+.performance-analytics {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow);
+}
+
+.performance-analytics__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.performance-analytics__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.performance-analytics__metric {
+  text-align: center;
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.performance-analytics__metric-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: var(--spacing-xs);
+}
+
+.performance-analytics__metric-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.performance-analytics__trend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  text-transform: capitalize;
+}
+
+.performance-analytics__trend-icon {
+  font-size: 1.25rem;
+}
+
+.performance-analytics__chart {
+  margin-top: var(--spacing-lg);
+}
+
+.performance-analytics__chart-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.performance-analytics__empty {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Line chart styles */
+.line-chart {
+  width: 100%;
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.line-chart--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.line-chart svg {
+  display: block;
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .performance-analytics {
+    padding: var(--spacing-lg);
+  }
+  
+  .performance-analytics__grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+  }
+  
+  .performance-analytics__metric {
+    padding: var(--spacing-sm);
+  }
+  
+  .performance-analytics__metric-value {
+    font-size: 1.25rem;
+  }
+  
+  .performance-analytics__metric-label {
+    font-size: 0.75rem;
+  }
+}
+
+/* Tablet responsive */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .performance-analytics__grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

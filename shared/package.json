@@ -1,0 +1,19 @@
+{
+  "name": "ml-e-shared",
+  "version": "1.0.0",
+  "description": "ML-E Shared Types - Common interfaces and types for the ML-E system",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .ts",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.45.0",
+    "typescript": "^5.9.3"
+  }
+}

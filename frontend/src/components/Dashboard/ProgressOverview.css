@@ -1,0 +1,117 @@
+/* Progress overview styles */
+
+.progress-overview {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow);
+}
+
+.progress-overview__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.progress-overview__main {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
+}
+
+.progress-overview__circle {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.progress-overview__percentage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.progress-overview__stats {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-md);
+}
+
+.progress-overview__stat {
+  text-align: center;
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+}
+
+.progress-overview__stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: var(--spacing-xs);
+}
+
+.progress-overview__stat-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.progress-overview__summary {
+  text-align: center;
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.progress-overview__summary strong {
+  color: var(--text-primary);
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .progress-overview {
+    padding: var(--spacing-lg);
+  }
+  
+  .progress-overview__main {
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+  
+  .progress-overview__stats {
+    width: 100%;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+  }
+  
+  .progress-overview__stat {
+    padding: var(--spacing-sm);
+  }
+  
+  .progress-overview__stat-value {
+    font-size: 1.25rem;
+  }
+  
+  .progress-overview__stat-label {
+    font-size: 0.75rem;
+  }
+}
+
+/* Extra small mobile */
+@media (max-width: 480px) {
+  .progress-overview__stats {
+    grid-template-columns: 1fr;
+  }
+}
