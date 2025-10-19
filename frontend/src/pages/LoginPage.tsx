@@ -23,7 +23,9 @@ export const LoginPage: React.FC = () => {
     try {
       await login(formData.username, formData.password);
     } catch (err) {
-      setError('Invalid username or password');
+      // Extract error message from the error object
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      setError(errorMessage);
     }
   };
 

@@ -17,8 +17,28 @@ export const useAuth = (): UseAuthReturn => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
+        // First check localStorage for stored user data
+        const storedUser = authService.getStoredUser();
+        if (storedUser) {
+          setUser(storedUser);
+        }
+
+        // Then verify with server if we have a token
+        const token = authService.getToken();
+        if (token) {
+          try {
+            const currentUser = await authService.getCurrentUser();
+            setUser(currentUser);
+          } catch (error) {
+            // Token might be expired, but keep stored user for now
+            console.warn('Failed to verify token with server:', error);
+            if (!storedUser) {
+              setUser(null);
+            }
+          }
+        } else if (!storedUser) {
+          setUser(null);
+        }
       } catch (error) {
         // User not authenticated or token expired
         setUser(null);

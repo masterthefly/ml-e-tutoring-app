@@ -4,7 +4,11 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  firstName?: string;
+  lastName?: string;
   grade: 9 | 10;
+  learningInterests: string[];
+  profileCompleted: boolean;
   createdAt: string;
   lastActive: string;
   preferences: UserPreferences;
@@ -17,7 +21,8 @@ export interface UserPreferences {
 }
 
 export interface LoginRequest {
-  username: string;
+  username?: string;
+  email?: string;
   password: string;
 }
 

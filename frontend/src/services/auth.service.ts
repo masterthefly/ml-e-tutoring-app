@@ -6,17 +6,34 @@ class AuthService {
   private readonly USER_KEY = 'ml-e-user';
 
   async login(username: string, password: string): Promise<User> {
-    const loginData: LoginRequest = { username, password };
+    try {
+      // Check if username looks like an email
+      const isEmail = username.includes('@');
+      const loginData: LoginRequest = isEmail 
+        ? { email: username, password }
+        : { username, password };
 
-    const response = await apiClient.post<LoginResponse>('/auth/login', loginData);
+      const response = await apiClient.post<LoginResponse>('/auth/login', loginData);
 
-    if (response.data.token && response.data.user) {
-      this.setToken(response.data.token);
-      this.setUser(response.data.user);
-      return response.data.user;
+      if (response.data.token && response.data.user) {
+        this.setToken(response.data.token);
+        this.setUser(response.data.user);
+        return response.data.user;
+      }
+
+      throw new Error('Invalid login response');
+    } catch (error: any) {
+      // Extract error message from API response
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else if (error.message) {
+        throw new Error(error.message);
+      } else {
+        throw new Error('Login failed');
+      }
     }
-
-    throw new Error('Invalid login response');
   }
 
   async getCurrentUser(): Promise<User | null> {
@@ -26,8 +43,8 @@ class AuthService {
     }
 
     try {
-      const response = await apiClient.get<User>('/auth/me');
-      const user = response.data;
+      const response = await apiClient.get<{message: string, data: {user: User}}>('/auth/me');
+      const user = response.data.data.user;
       this.setUser(user);
       return user;
     } catch (error) {

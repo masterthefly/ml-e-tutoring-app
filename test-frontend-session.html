@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Session Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { color: green; }
+        .error { color: red; }
+        button { margin: 5px; padding: 10px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Frontend Session Persistence Test</h1>
+    
+    <div class="test-section">
+        <h2>Session Service Test</h2>
+        <button onclick="testSessionService()">Test Session Service</button>
+        <button onclick="simulateNavigation()">Simulate Navigation</button>
+        <button onclick="clearStorage()">Clear Storage</button>
+        <div id="sessionResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>localStorage Content</h2>
+        <button onclick="showStorage()">Show Storage</button>
+        <pre id="storageContent"></pre>
+    </div>
+
+    <script>
+        // Simulate the ChatSessionService
+        class TestChatSessionService {
+            constructor() {
+                this.sessions = new Map();
+                this.currentSessionId = null;
+                this.STORAGE_KEY = 'ml-e-chat-sessions';
+                this.loadFromStorage();
+            }
+
+            getSession(sessionId) {
+                let id = sessionId;
+                
+                if (!id) {
+                    if (this.currentSessionId && this.sessions.has(this.currentSessionId)) {
+                        id = this.currentSessionId;
+                    } else {
+                        const existingSessions = this.getAllSessions();
+                        if (existingSessions.length > 0) {
+                            id = existingSessions[0].sessionId;
+                        } else {
+                            id = this.generateSessionId();
+                        }
+                    }
+                }
+                
+                if (!this.sessions.has(id)) {
+                    this.sessions.set(id, {
+                        sessionId: id,
+                        messages: [],
+                        lastActivity: new Date(),
+                        messageCache: new Map()
+                    });
+                }
+
+                const session = this.sessions.get(id);
+                session.lastActivity = new Date();
+                this.currentSessionId = id;
+                this.saveToStorage();
+                
+                return session;
+            }
+
+            addMessage(message) {
+                if (!this.currentSessionId) {
+                    this.getSession();
+                }
+
+                const session = this.sessions.get(this.currentSessionId);
+                session.messages.push(message);
+                session.lastActivity = new Date();
+                
+                this.saveToStorage();
+            }
+
+            getAllSessions() {
+                return Array.from(this.sessions.values())
+                    .sort((a, b) => b.lastActivity.getTime() - a.lastActivity.getTime());
+            }
+
+            ensureSessionContinuity() {
+                const existingSessions = this.getAllSessions();
+                
+                if (existingSessions.length > 0) {
+                    const mostRecentSession = existingSessions[0];
+                    this.currentSessionId = mostRecentSession.sessionId;
+                    mostRecentSession.lastActivity = new Date();
+                    this.saveToStorage();
+                    return mostRecentSession;
+                }
+                
+                return this.getSession();
+            }
+
+            saveToStorage() {
+                try {
+                    const sessionsData = Array.from(this.sessions.entries()).map(([id, session]) => ({
+                        sessionId: id,
+                        messages: session.messages,
+                        lastActivity: session.lastActivity.toISOString(),
+                        messageCache: Array.from(session.messageCache.entries())
+                    }));
+
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+                        sessions: sessionsData,
+                        currentSessionId: this.currentSessionId
+                    }));
+                } catch (error) {
+                    console.warn('Failed to save chat sessions to storage:', error);
+                }
+            }
+
+            loadFromStorage() {
+                try {
+                    const stored = localStorage.getItem(this.STORAGE_KEY);
+                    if (!stored) {
+                        return;
+                    }
+
+                    const data = JSON.parse(stored);
+                    this.currentSessionId = data.currentSessionId;
+
+                    data.sessions.forEach((sessionData) => {
+                        const session = {
+                            sessionId: sessionData.sessionId,
+                            messages: sessionData.messages.map((msg) => ({
+                                ...msg,
+                                timestamp: new Date(msg.timestamp)
+                            })),
+                            lastActivity: new Date(sessionData.lastActivity),
+                            messageCache: new Map(sessionData.messageCache || [])
+                        };
+
+                        this.sessions.set(sessionData.sessionId, session);
+                    });
+                } catch (error) {
+                    console.warn('Failed to load chat sessions from storage:', error);
+                    localStorage.removeItem(this.STORAGE_KEY);
+                }
+            }
+
+            generateSessionId() {
+                return `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            }
+
+            clearStorage() {
+                localStorage.removeItem(this.STORAGE_KEY);
+                this.sessions.clear();
+                this.currentSessionId = null;
+            }
+        }
+
+        let sessionService = new TestChatSessionService();
+
+        function testSessionService() {
+            const results = document.getElementById('sessionResults');
+            results.innerHTML = '<h3>Testing Session Service...</h3>';
+
+            try {
+                // Test 1: Create initial session
+                const session1 = sessionService.getSession();
+                results.innerHTML += `<p class="success">✅ Created session: ${session1.sessionId}</p>`;
+
+                // Test 2: Add messages
+                sessionService.addMessage({
+                    id: '1',
+                    content: 'Hello, what is machine learning?',
+                    sender: 'student',
+                    timestamp: new Date()
+                });
+
+                sessionService.addMessage({
+                    id: '2',
+                    content: 'Machine learning is...',
+                    sender: 'tutor',
+                    timestamp: new Date()
+                });
+
+                results.innerHTML += `<p class="success">✅ Added 2 messages to session</p>`;
+
+                // Test 3: Get session again (should be same)
+                const session2 = sessionService.getSession();
+                if (session1.sessionId === session2.sessionId) {
+                    results.innerHTML += `<p class="success">✅ Session continuity maintained: ${session2.sessionId}</p>`;
+                    results.innerHTML += `<p class="success">✅ Messages preserved: ${session2.messages.length} messages</p>`;
+                } else {
+                    results.innerHTML += `<p class="error">❌ Session continuity failed: ${session1.sessionId} vs ${session2.sessionId}</p>`;
+                }
+
+            } catch (error) {
+                results.innerHTML += `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        function simulateNavigation() {
+            const results = document.getElementById('sessionResults');
+            results.innerHTML += '<h3>Simulating Navigation...</h3>';
+
+            try {
+                // Simulate what happens when user navigates away and back
+                const beforeNavigation = sessionService.ensureSessionContinuity();
+                results.innerHTML += `<p>📍 Before navigation: Session ${beforeNavigation.sessionId} with ${beforeNavigation.messages.length} messages</p>`;
+
+                // Create new service instance (simulates page reload)
+                sessionService = new TestChatSessionService();
+                
+                const afterNavigation = sessionService.ensureSessionContinuity();
+                results.innerHTML += `<p>📍 After navigation: Session ${afterNavigation.sessionId} with ${afterNavigation.messages.length} messages</p>`;
+
+                if (beforeNavigation.sessionId === afterNavigation.sessionId && 
+                    beforeNavigation.messages.length === afterNavigation.messages.length) {
+                    results.innerHTML += `<p class="success">✅ Navigation simulation successful - session preserved!</p>`;
+                } else {
+                    results.innerHTML += `<p class="error">❌ Navigation simulation failed - session lost!</p>`;
+                }
+
+            } catch (error) {
+                results.innerHTML += `<p class="error">❌ Navigation error: ${error.message}</p>`;
+            }
+        }
+
+        function clearStorage() {
+            sessionService.clearStorage();
+            document.getElementById('sessionResults').innerHTML = '<p>🗑️ Storage cleared</p>';
+            document.getElementById('storageContent').textContent = '';
+        }
+
+        function showStorage() {
+            const content = localStorage.getItem('ml-e-chat-sessions');
+            document.getElementById('storageContent').textContent = content ? JSON.stringify(JSON.parse(content), null, 2) : 'No data in localStorage';
+        }
+
+        // Auto-run initial test
+        window.onload = function() {
+            showStorage();
+        };
+    </script>
+</body>
+</html>

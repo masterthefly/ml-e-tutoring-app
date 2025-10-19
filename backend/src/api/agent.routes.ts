@@ -2,6 +2,8 @@ import { Router, Response } from 'express';
 import { authenticateToken, validateRequest, chatRateLimit } from '../middleware/index.js';
 import { logger } from '../utils/logger.js';
 import { AuthenticatedRequest } from '../types/auth.types.js';
+import { openaiService } from '../services/openai.service.js';
+import { authService } from '../services/auth.service.js';
 import Joi from 'joi';
 
 const router = Router();
@@ -41,12 +43,27 @@ router.post('/chat',
         sessionId 
       });
 
-      // Mock agent system response for now
+      // Get user info for personalized response
+      let userGrade = 10; // default
+      try {
+        const user = await authService.getUserById(userId);
+        if (user) {
+          userGrade = user.grade;
+        }
+      } catch (error) {
+        logger.warn('Could not fetch user grade, using default:', error instanceof Error ? error.message : String(error));
+      }
+
+      // Generate intelligent response using OpenAI
+      const agentResponse = await openaiService.generateMLResponse(message, userGrade);
+
       const response = {
-        message: `Thank you for your message: "${message}". The multi-agent system is being implemented.`,
-        agentName: 'ML-E Assistant',
+        message: agentResponse.message,
+        agentName: agentResponse.agentName,
         sessionId: sessionId || `session_${Date.now()}`,
-        timestamp: new Date()
+        timestamp: new Date(),
+        confidence: agentResponse.confidence,
+        metadata: agentResponse.metadata
       };
 
       res.json({

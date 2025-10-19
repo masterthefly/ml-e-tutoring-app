@@ -16,9 +16,10 @@ const registerSchema = Joi.object({
 });
 
 const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
+  email: Joi.string().email(),
+  username: Joi.string().alphanum().min(3).max(30),
   password: Joi.string().required()
-});
+}).or('email', 'username');
 
 const refreshTokenSchema = Joi.object({
   refreshToken: Joi.string().required()
@@ -47,10 +48,7 @@ router.post('/register',
 
     const result = await authService.register(userData);
 
-    res.status(201).json({
-      message: 'User registered successfully',
-      data: result
-    });
+    res.status(201).json(result);
   } catch (error) {
     logger.error('Registration endpoint error:', error);
     
@@ -81,16 +79,13 @@ router.post('/login',
     const credentials: LoginRequest = req.body;
     const result = await authService.login(credentials);
 
-    res.json({
-      message: 'Login successful',
-      data: result
-    });
+    res.json(result);
   } catch (error) {
     logger.error('Login endpoint error:', error);
     
     if (error instanceof Error && error.message.includes('Invalid')) {
       res.status(401).json({
-        error: 'Invalid email or password'
+        error: 'Invalid credentials'
       });
       return;
     }

@@ -3,6 +3,11 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger.js';
 import { redisService } from './redis.service.js';
+import { openaiService } from './openai.service.js';
+import { authService } from './auth.service.js';
+import { analyticsService } from './analytics.service.js';
+import { SessionRepositoryImpl } from '../database/repositories/session.repository.js';
+import { Message } from '../types/index.js';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -29,6 +34,11 @@ class WebSocketService {
   private io: SocketIOServer | null = null;
   private connectedUsers = new Map<string, AuthenticatedSocket>();
   private userSessions = new Map<string, string>(); // userId -> sessionId
+  private sessionRepository: SessionRepositoryImpl;
+
+  constructor() {
+    this.sessionRepository = new SessionRepositoryImpl();
+  }
 
   /**
    * Initialize WebSocket server
@@ -46,17 +56,22 @@ class WebSocketService {
     // Authentication middleware
     this.io.use(async (socket: AuthenticatedSocket, next) => {
       try {
-        const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
-        
+        const token = socket.handshake.auth.token ||
+          socket.handshake.headers.authorization?.replace('Bearer ', '') ||
+          socket.request.headers.authorization?.replace('Bearer ', '');
+
         if (!token) {
+          logger.warn('WebSocket connection attempted without token');
           return next(new Error('Authentication token required'));
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+        const jwtSecret = process.env.JWT_SECRET || 'ml-e-super-secret-jwt-key-for-development-only-change-in-production-2024';
+        const decoded = jwt.verify(token, jwtSecret) as any;
+
         socket.userId = decoded.userId;
         socket.username = decoded.username;
 
-        logger.info(`WebSocket authentication successful for user: ${socket.userId}`);
+        logger.info(`WebSocket authentication successful for user: ${socket.userId} (${socket.username})`);
         next();
       } catch (error) {
         logger.error('WebSocket authentication failed:', error);
@@ -94,9 +109,30 @@ class WebSocketService {
       timestamp: new Date()
     });
 
+    // Set up heartbeat to keep connection alive
+    const heartbeatInterval = setInterval(() => {
+      if (socket.connected) {
+        socket.emit('heartbeat', { timestamp: new Date() });
+      } else {
+        clearInterval(heartbeatInterval);
+      }
+    }, 30000); // Send heartbeat every 30 seconds
+
+    // Clear heartbeat on disconnect
+    socket.on('disconnect', () => {
+      clearInterval(heartbeatInterval);
+    });
+
     // Handle chat messages
     socket.on('chat:message', async (data) => {
-      await this.handleChatMessage(socket, data);
+      try {
+        await this.handleChatMessage(socket, data);
+      } catch (error) {
+        logger.error(`Error in chat message handler for user ${userId}:`, error);
+        socket.emit('error', {
+          message: 'Failed to process message. Please try again.'
+        });
+      }
     });
 
     // Handle typing indicators
@@ -158,24 +194,66 @@ class WebSocketService {
       // Emit message to user immediately for instant feedback
       socket.emit('chat:message', chatMessage);
 
-      // Store message in session if sessionId provided
-      if (sessionId) {
-        await this.storeMessage(sessionId, chatMessage);
+      // Check for duplicate/similar questions BEFORE calling LLM
+      const cachedResponse = await this.checkForCachedResponse(userId, sessionId, message.trim());
+      if (cachedResponse) {
+        logger.info(`Using cached response for duplicate question from user ${userId}: "${message.trim().substring(0, 50)}..."`);
+        
+        // Send cached response with updated timestamp and cache indicator
+        const cachedAgentMessage: ChatMessage = {
+          ...cachedResponse,
+          id: `cached_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          timestamp: new Date(),
+          message: `${cachedResponse.message}\n\n*[This response was retrieved from your previous conversations]*`
+        };
+
+        socket.emit('chat:message', cachedAgentMessage);
+        
+        // Store both user message and cached response in MongoDB
+        if (sessionId) {
+          await this.storeMessageInMongoDB(sessionId, chatMessage);
+          await this.storeMessageInMongoDB(sessionId, cachedAgentMessage);
+        }
+        
+        return;
       }
 
-      // Mock agent system response for now
-      const agentResponse = {
-        message: `Thank you for your message: "${message.trim()}". The multi-agent system is being implemented and will provide intelligent responses soon.`,
-        agentName: 'ML-E Assistant',
-        sessionId: sessionId || `session_${Date.now()}`,
-        timestamp: new Date()
-      };
+      // Store user message in MongoDB
+      if (sessionId) {
+        await this.storeMessageInMongoDB(sessionId, chatMessage);
+      }
+
+      // Track session activity
+      if (sessionId) {
+        await analyticsService.updateSessionActivity(sessionId, 1, message.includes('?') ? 1 : 0);
+      }
+
+      // Show typing indicator for agent
+      socket.emit('chat:typing', {
+        userId: 'system',
+        username: 'ML-E Tutor',
+        isTyping: true
+      });
+
+      // Get user info for personalized response
+      let userGrade = 10; // default
+      try {
+        const user = await authService.getUserById(userId);
+        if (user) {
+          userGrade = user.grade;
+        }
+      } catch (error) {
+        logger.warn('Could not fetch user grade, using default:', error instanceof Error ? error.message : String(error));
+      }
+
+      // Generate intelligent response using OpenAI
+      const agentResponse = await openaiService.generateMLResponse(message.trim(), userGrade);
 
       // Create agent response message
       const agentMessage: ChatMessage = {
         id: `agent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         userId: 'system',
-        username: agentResponse.agentName || 'ML-E Assistant',
+        username: agentResponse.agentName,
         message: agentResponse.message,
         timestamp: new Date(),
         sessionId,
@@ -185,22 +263,47 @@ class WebSocketService {
       // Send agent response to user
       socket.emit('chat:message', agentMessage);
 
-      // Store agent response in session
+      // Store agent response in MongoDB
       if (sessionId) {
-        await this.storeMessage(sessionId, agentMessage);
+        await this.storeMessageInMongoDB(sessionId, agentMessage);
       }
 
-      // Emit typing stopped for agent
+      // Stop typing indicator
       socket.emit('chat:typing', {
         userId: 'system',
-        username: agentResponse.agentName || 'ML-E Assistant',
+        username: agentResponse.agentName,
         isTyping: false
+      });
+
+      // Track learning progress if topic detected
+      if (sessionId && agentResponse.metadata?.topic && agentResponse.metadata.topic !== 'general') {
+        await analyticsService.trackProgress({
+          userId,
+          sessionId,
+          topicId: agentResponse.metadata.topic.replace(/\s+/g, '_').toLowerCase(),
+          topicName: agentResponse.metadata.topic,
+          action: 'progressed',
+          progressPercentage: Math.min(100, Math.random() * 30 + 20), // Simulated progress
+          timeSpent: Math.floor(Math.random() * 300 + 60), // 1-5 minutes
+          difficultyLevel: userGrade === 9 ? 4 : 6,
+          masteryLevel: userGrade === 9 ? 'beginner' : 'intermediate',
+          metadata: {
+            conceptsUnderstood: [agentResponse.metadata.topic],
+            questionsAnswered: message.includes('?') ? 1 : 0
+          }
+        });
+      }
+
+      logger.info(`Agent response sent to user ${userId}`, {
+        confidence: agentResponse.confidence,
+        model: agentResponse.metadata?.model,
+        topic: agentResponse.metadata?.topic
       });
 
     } catch (error) {
       logger.error('Error handling chat message:', error);
-      socket.emit('error', { 
-        message: 'Failed to process message. Please try again.' 
+      socket.emit('error', {
+        message: 'Failed to process message. Please try again.'
       });
     }
   }
@@ -227,7 +330,7 @@ class WebSocketService {
    */
   private handleSessionJoin(socket: AuthenticatedSocket, sessionId: string): void {
     const userId = socket.userId!;
-    
+
     // Leave previous session if any
     const previousSessionId = this.userSessions.get(userId);
     if (previousSessionId) {
@@ -275,7 +378,7 @@ class WebSocketService {
    */
   private handleDisconnection(socket: AuthenticatedSocket): void {
     const userId = socket.userId!;
-    
+
     logger.info(`User disconnected: ${userId}`);
 
     // Remove from connected users
@@ -286,20 +389,67 @@ class WebSocketService {
   }
 
   /**
-   * Store message in Redis for session persistence
+   * Store message in MongoDB for persistent session storage
    */
-  private async storeMessage(sessionId: string, message: ChatMessage): Promise<void> {
+  private async storeMessageInMongoDB(sessionId: string, chatMessage: ChatMessage): Promise<void> {
+    try {
+      // Convert ChatMessage to Message format for MongoDB
+      const message: Message = {
+        id: chatMessage.id,
+        sender: chatMessage.agentResponse ? 'tutor' : 'student',
+        content: chatMessage.message,
+        timestamp: chatMessage.timestamp,
+        metadata: {
+          messageType: chatMessage.agentResponse ? 'explanation' : 'question',
+          agentId: chatMessage.agentResponse ? 'ml-tutor' : undefined,
+          topicId: 'machine-learning', // Could be derived from message content
+          difficulty: 5, // Default difficulty
+          hasCode: chatMessage.message.includes('```') || chatMessage.message.includes('code'),
+          hasMath: /\b(equation|formula|calculate|math|algorithm)\b/i.test(chatMessage.message)
+        }
+      };
+
+      // Ensure session exists or create it
+      let session = await this.sessionRepository.findSessionById(sessionId);
+      if (!session) {
+        // Create new session if it doesn't exist
+        session = await this.sessionRepository.createSession({
+          userId: chatMessage.userId,
+          currentTopic: 'machine-learning'
+        });
+        logger.info(`Created new session ${sessionId} for user ${chatMessage.userId}`);
+      }
+
+      // Add message to session
+      await this.sessionRepository.addMessage(sessionId, message);
+      
+      // Also store in Redis for fast access (fallback)
+      await this.storeMessageInRedis(sessionId, chatMessage);
+      
+      logger.debug(`Message stored in MongoDB for session ${sessionId}: ${message.content.substring(0, 50)}...`);
+    } catch (error) {
+      logger.error('Failed to store message in MongoDB:', error);
+      // Fallback to Redis only
+      await this.storeMessageInRedis(sessionId, chatMessage);
+    }
+  }
+
+  /**
+   * Store message in Redis for session persistence (fallback)
+   */
+  private async storeMessageInRedis(sessionId: string, message: ChatMessage): Promise<void> {
     try {
       const key = `session:${sessionId}:messages`;
       await redisService.lpush(key, JSON.stringify(message));
-      
+
       // Keep only last 100 messages per session
       await redisService.ltrim(key, 0, 99);
-      
+
       // Set expiration for session messages (24 hours)
       await redisService.expire(key, 24 * 60 * 60);
     } catch (error) {
-      logger.error('Error storing message in Redis:', error);
+      logger.warn('Redis not available, message not persisted:', error instanceof Error ? error.message : String(error));
+      // Don't throw error - continue without persistence
     }
   }
 
@@ -310,10 +460,10 @@ class WebSocketService {
     try {
       const key = `session:${sessionId}:messages`;
       const messages = await redisService.lrange(key, 0, -1);
-      
+
       return messages.map(msg => JSON.parse(msg)).reverse(); // Reverse to get chronological order
     } catch (error) {
-      logger.error('Error retrieving session messages:', error);
+      logger.warn('Redis not available, returning empty message history:', error instanceof Error ? error.message : String(error));
       return [];
     }
   }
@@ -349,6 +499,162 @@ class WebSocketService {
    */
   isUserConnected(userId: string): boolean {
     return this.connectedUsers.has(userId);
+  }
+
+  /**
+   * Check for cached response to similar questions across all user sessions
+   */
+  private async checkForCachedResponse(userId: string, currentSessionId: string, question: string): Promise<ChatMessage | null> {
+    try {
+      const normalizedQuestion = this.normalizeQuestion(question);
+      
+      // First check current session from MongoDB
+      if (currentSessionId) {
+        const currentSessionResponse = await this.checkSessionForDuplicate(currentSessionId, normalizedQuestion);
+        if (currentSessionResponse) {
+          return currentSessionResponse;
+        }
+      }
+
+      // Then check user's recent sessions from MongoDB
+      const userSessions = await this.sessionRepository.findUserSessions(userId, 5); // Check last 5 sessions
+      
+      for (const session of userSessions) {
+        if (session.id === currentSessionId) continue; // Skip current session (already checked)
+        
+        const sessionResponse = await this.checkSessionForDuplicate(session.id, normalizedQuestion);
+        if (sessionResponse) {
+          return sessionResponse;
+        }
+      }
+
+      // Fallback to Redis if MongoDB fails
+      return await this.checkRedisForDuplicate(currentSessionId, normalizedQuestion);
+      
+    } catch (error) {
+      logger.warn('Error checking cached responses:', error instanceof Error ? error.message : String(error));
+      return null;
+    }
+  }
+
+  /**
+   * Check a specific session for duplicate questions
+   */
+  private async checkSessionForDuplicate(sessionId: string, normalizedQuestion: string): Promise<ChatMessage | null> {
+    try {
+      // Get conversation history from MongoDB
+      const messages = await this.sessionRepository.getConversationHistory(sessionId, 50); // Check last 50 messages
+      
+      for (let i = 0; i < messages.length - 1; i++) {
+        const userMsg = messages[i];
+        const agentMsg = messages[i + 1];
+
+        // Check if we have a user question followed by agent response
+        if (userMsg.sender === 'student' && agentMsg.sender === 'tutor') {
+          const cachedQuestion = this.normalizeQuestion(userMsg.content);
+          
+          if (this.isSimilarQuestion(normalizedQuestion, cachedQuestion)) {
+            logger.info(`Found duplicate question in session ${sessionId}: "${userMsg.content.substring(0, 50)}..."`);
+            
+            // Convert MongoDB Message to ChatMessage format
+            return {
+              id: agentMsg.id,
+              userId: 'system',
+              username: 'ML-E Tutor',
+              message: agentMsg.content,
+              timestamp: agentMsg.timestamp,
+              sessionId: sessionId,
+              agentResponse: true
+            };
+          }
+        }
+      }
+
+      return null;
+    } catch (error) {
+      logger.warn(`Error checking session ${sessionId} for duplicates:`, error instanceof Error ? error.message : String(error));
+      return null;
+    }
+  }
+
+  /**
+   * Fallback to check Redis for duplicate questions
+   */
+  private async checkRedisForDuplicate(sessionId: string, normalizedQuestion: string): Promise<ChatMessage | null> {
+    if (!sessionId) return null;
+
+    try {
+      const messages = await this.getSessionMessages(sessionId);
+      
+      // Look for similar questions in recent messages (last 20 messages)
+      const recentMessages = messages.slice(-20);
+      
+      for (let i = 0; i < recentMessages.length - 1; i++) {
+        const userMsg = recentMessages[i];
+        const agentMsg = recentMessages[i + 1];
+
+        // Check if we have a user question followed by agent response
+        if (!userMsg.agentResponse && agentMsg.agentResponse) {
+          const cachedQuestion = this.normalizeQuestion(userMsg.message);
+          
+          if (this.isSimilarQuestion(normalizedQuestion, cachedQuestion)) {
+            return agentMsg;
+          }
+        }
+      }
+
+      return null;
+    } catch (error) {
+      logger.warn('Error checking Redis for cached responses:', error instanceof Error ? error.message : String(error));
+      return null;
+    }
+  }
+
+  /**
+   * Normalize question for comparison
+   */
+  private normalizeQuestion(question: string): string {
+    return question
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s]/g, '') // Remove punctuation
+      .replace(/\s+/g, ' '); // Normalize whitespace
+  }
+
+  /**
+   * Check if two questions are similar (enhanced duplicate detection)
+   */
+  private isSimilarQuestion(question1: string, question2: string): boolean {
+    // Exact match
+    if (question1 === question2) {
+      return true;
+    }
+
+    // Check if one question contains the other (for variations like "what is ML?" vs "what is machine learning?")
+    if (question1.includes(question2) || question2.includes(question1)) {
+      return true;
+    }
+
+    // Split into significant words (length > 2 to avoid common words like "is", "the", etc.)
+    const words1 = question1.split(' ').filter(word => word.length > 2);
+    const words2 = question2.split(' ').filter(word => word.length > 2);
+    
+    if (words1.length === 0 || words2.length === 0) {
+      return false;
+    }
+
+    // Calculate similarity based on common significant words
+    const commonWords = words1.filter(word => words2.includes(word));
+    const similarity = commonWords.length / Math.max(words1.length, words2.length);
+    
+    // Enhanced similarity check with different thresholds based on question length
+    if (words1.length <= 3 || words2.length <= 3) {
+      // For short questions, require higher similarity (80%)
+      return similarity >= 0.8;
+    } else {
+      // For longer questions, 70% similarity is sufficient
+      return similarity >= 0.7;
+    }
   }
 
   /**

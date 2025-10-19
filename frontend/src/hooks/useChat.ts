@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWebSocket } from './useWebSocket';
 import { Message, ChatAgent, TypingStatus } from '../types/chat';
+import { chatSessionService } from '../services/chat-session.service';
 
 interface UseChatReturn {
   messages: Message[];
@@ -10,17 +11,36 @@ interface UseChatReturn {
   isLoading: boolean;
   sendMessage: (content: string) => void;
   clearMessages: () => void;
+  refreshMessages: () => void;
+  sessionId: string | null;
 }
 
-export const useChat = (sessionId?: string): UseChatReturn => {
+export const useChat = (providedSessionId?: string): UseChatReturn => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingStatus, setTypingStatus] = useState<TypingStatus>({
     isTyping: false,
     timestamp: new Date(),
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   const { isConnected, connect, emit, on, off } = useWebSocket();
+
+  // Initialize session and load messages
+  useEffect(() => {
+    // Use session continuity to maintain the same session across navigation
+    const session = providedSessionId 
+      ? chatSessionService.getSession(providedSessionId)
+      : chatSessionService.ensureSessionContinuity();
+      
+    setCurrentSessionId(session.sessionId);
+    
+    // Load existing messages from the session
+    const existingMessages = session.messages || [];
+    setMessages(existingMessages);
+    
+    console.log(`Loaded ${existingMessages.length} messages from session ${session.sessionId}`);
+  }, [providedSessionId]);
 
   // Connect to WebSocket when component mounts
   useEffect(() => {
@@ -31,63 +51,57 @@ export const useChat = (sessionId?: string): UseChatReturn => {
 
   // Join chat session when connected
   useEffect(() => {
-    if (isConnected && sessionId) {
-      emit('join-session', { sessionId });
+    if (isConnected && currentSessionId) {
+      emit('session:join', currentSessionId);
     }
-  }, [isConnected, sessionId, emit]);
+  }, [isConnected, currentSessionId, emit]);
 
   // Set up message listeners
   useEffect(() => {
-    const handleMessage = (data: any) => {
+    const handleChatMessage = (data: any) => {
       const message: Message = {
         id: data.id || Date.now().toString(),
-        sender: data.sender,
-        content: data.content,
+        sender: data.agentResponse ? (data.username || 'tutor') : 'student',
+        content: data.message,
         timestamp: new Date(data.timestamp),
-        metadata: data.metadata,
-      };
-      
-      setMessages(prev => [...prev, message]);
-      setIsLoading(false);
-    };
-
-    const handleAgentResponse = (data: any) => {
-      const message: Message = {
-        id: data.id || Date.now().toString(),
-        sender: data.agent || 'tutor',
-        content: data.content,
-        timestamp: new Date(data.timestamp || Date.now()),
         metadata: {
-          confidence: data.confidence,
-          agentId: data.agentId,
-          ...data.metadata,
+          agentResponse: data.agentResponse,
+          userId: data.userId,
+          username: data.username,
         },
       };
       
-      setMessages(prev => [...prev, message]);
-      setTypingStatus({ isTyping: false, timestamp: new Date() });
+      // Add to session service for persistence
+      chatSessionService.addMessage(message);
+      
+      // Update local state
+      setMessages(prev => {
+        const newMessages = [...prev, message];
+        return newMessages;
+      });
       setIsLoading(false);
     };
 
-    const handleTyping = (data: { agent: string; isTyping: boolean }) => {
-      setTypingStatus({
-        isTyping: data.isTyping,
-        agent: data.agent as ChatAgent,
-        timestamp: new Date(),
-      });
+    const handleTyping = (data: { userId: string; username: string; isTyping: boolean }) => {
+      // Only show typing for agents/system users
+      if (data.userId === 'system' || data.username.includes('Assistant')) {
+        setTypingStatus({
+          isTyping: data.isTyping,
+          agent: 'tutor' as ChatAgent,
+          timestamp: new Date(),
+        });
+      }
     };
 
     if (isConnected) {
-      on('message', handleMessage);
-      on('agent-response', handleAgentResponse);
-      on('typing', handleTyping);
+      on('chat:message' as keyof CustomWebSocketEvents, handleChatMessage as any);
+      on('chat:typing' as keyof CustomWebSocketEvents, handleTyping as any);
     }
 
     return () => {
       if (isConnected) {
-        off('message', handleMessage);
-        off('agent-response', handleAgentResponse);
-        off('typing', handleTyping);
+        off('chat:message' as keyof CustomWebSocketEvents, handleChatMessage as any);
+        off('chat:typing' as keyof CustomWebSocketEvents, handleTyping as any);
       }
     };
   }, [isConnected, on, off]);
@@ -98,30 +112,80 @@ export const useChat = (sessionId?: string): UseChatReturn => {
       return;
     }
 
-    // Add user message immediately
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      sender: 'student',
-      content,
-      timestamp: new Date(),
-    };
+    // Check for cached response first
+    const cachedResponse = chatSessionService.getCachedResponse(content);
+    if (cachedResponse) {
+      console.log('Using cached response for question:', content);
+      
+      // Add cached messages to current session with new timestamps
+      const [userMsg, agentMsg] = cachedResponse;
+      const newUserMsg = {
+        ...userMsg,
+        id: Date.now().toString(),
+        timestamp: new Date()
+      };
+      const newAgentMsg = {
+        ...agentMsg,
+        id: (Date.now() + 1).toString(),
+        timestamp: new Date()
+      };
 
-    setMessages(prev => [...prev, userMessage]);
+      // Add to session and update UI
+      chatSessionService.addMessage(newUserMsg);
+      chatSessionService.addMessage(newAgentMsg);
+      setMessages(prev => [...prev, newUserMsg, newAgentMsg]);
+      
+      return;
+    }
+
     setIsLoading(true);
 
-    // Send message via WebSocket
-    emit('send-message', {
-      content,
-      sessionId,
+    // Send message via WebSocket - backend will echo it back
+    emit('chat:message', {
+      message: content,
+      sessionId: currentSessionId || `session_${Date.now()}`,
       timestamp: new Date().toISOString(),
     });
-  }, [isConnected, sessionId, emit]);
+  }, [isConnected, currentSessionId, emit]);
 
   const clearMessages = useCallback(() => {
+    chatSessionService.clearCurrentSession();
     setMessages([]);
     setTypingStatus({ isTyping: false, timestamp: new Date() });
     setIsLoading(false);
   }, []);
+
+  const refreshMessages = useCallback(() => {
+    // Always get the current session to ensure continuity
+    const session = chatSessionService.getCurrentSession();
+    setCurrentSessionId(session.sessionId);
+    setMessages(session.messages || []);
+    console.log(`Refreshed ${session.messages.length} messages from session ${session.sessionId}`);
+  }, []);
+
+  // Cache question-response pairs for future use
+  useEffect(() => {
+    if (messages.length >= 2) {
+      const lastTwo = messages.slice(-2);
+      const [userMsg, agentMsg] = lastTwo;
+      
+      // Check if we have a user question followed by an agent response
+      if (userMsg.sender === 'student' && agentMsg.sender === 'tutor' && 
+          userMsg.content && agentMsg.content) {
+        chatSessionService.cacheResponse(userMsg.content, userMsg, agentMsg);
+      }
+    }
+  }, [messages]);
+
+  // Refresh messages when window gains focus (user returns to tab/page)
+  useEffect(() => {
+    const handleFocus = () => {
+      refreshMessages();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [refreshMessages]);
 
   return {
     messages,
@@ -131,5 +195,7 @@ export const useChat = (sessionId?: string): UseChatReturn => {
     isLoading,
     sendMessage,
     clearMessages,
+    refreshMessages,
+    sessionId: currentSessionId,
   };
 };

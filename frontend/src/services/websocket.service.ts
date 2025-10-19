@@ -3,6 +3,12 @@ import { authService } from './auth.service';
 
 export interface CustomWebSocketEvents {
   // Chat events
+  'chat:message': (data: any) => void;
+  'chat:typing': (data: { userId: string; username: string; isTyping: boolean }) => void;
+  'connected': (data: any) => void;
+  'heartbeat': (data: any) => void;
+
+  // Legacy events for compatibility
   'message': (data: any) => void;
   'typing': (data: { agent: string; isTyping: boolean }) => void;
   'agent-response': (data: any) => void;
@@ -49,13 +55,17 @@ class WebSocketService {
         return;
       }
 
-      this.socket = io('/api', {
+      this.socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001', {
         auth: {
           token,
         },
         transports: ['websocket', 'polling'],
-        timeout: 10000,
+        timeout: 20000,
         forceNew: true,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
       });
 
       this.socket.on('connect', () => {
@@ -88,6 +98,12 @@ class WebSocketService {
       this.socket.on('reconnect', () => {
         console.log('WebSocket reconnected');
         this.reconnectAttempts = 0;
+      });
+
+      // Handle heartbeat to keep connection alive
+      this.socket.on('heartbeat', () => {
+        // Respond to heartbeat to confirm connection is alive
+        this.socket?.emit('heartbeat-response', { timestamp: new Date().toISOString() });
       });
     });
   }
@@ -212,19 +228,19 @@ class WebSocketService {
 
   // Chat-specific methods
   sendMessage(content: string, sessionId?: string): void {
-    this.emit('send-message', {
-      content,
+    this.emit('chat:message', {
+      message: content,
       sessionId,
       timestamp: new Date().toISOString(),
     });
   }
 
   joinChatSession(sessionId: string): void {
-    this.emit('join-session', { sessionId });
+    this.emit('session:join', sessionId);
   }
 
   leaveChatSession(sessionId: string): void {
-    this.emit('leave-session', { sessionId });
+    this.emit('session:leave');
   }
 
   // Progress-specific methods
@@ -234,7 +250,7 @@ class WebSocketService {
 
   // Typing indicators
   sendTypingStatus(isTyping: boolean, sessionId?: string): void {
-    this.emit('typing', {
+    this.emit('chat:typing', {
       isTyping,
       sessionId,
       timestamp: new Date().toISOString(),

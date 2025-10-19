@@ -18,8 +18,8 @@ export class AuthService {
   private readonly SALT_ROUNDS: number;
 
   constructor() {
-    this.JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-    this.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key';
+    this.JWT_SECRET = process.env.JWT_SECRET || 'ml-e-super-secret-jwt-key-for-development-only-change-in-production-2024';
+    this.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'ml-e-super-secret-refresh-key-for-development-only-change-in-production-2024';
     // Parse expiration times - if it's a number string, convert to number, otherwise keep as string
     const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '15m';
     const jwtRefreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
@@ -29,7 +29,7 @@ export class AuthService {
     this.SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || '12');
 
     if (process.env.NODE_ENV === 'production' && 
-        (this.JWT_SECRET === 'your-secret-key' || this.JWT_REFRESH_SECRET === 'your-refresh-secret-key')) {
+        (this.JWT_SECRET === 'ml-e-super-secret-jwt-key-for-development-only-change-in-production-2024' || this.JWT_REFRESH_SECRET === 'ml-e-super-secret-refresh-key-for-development-only-change-in-production-2024')) {
       throw new Error('JWT secrets must be set in production environment');
     }
   }
@@ -100,13 +100,15 @@ export class AuthService {
    */
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
-      // Find user by email
-      const user = await UserModel.findOne({ 
-        email: credentials.email.toLowerCase() 
-      });
+      // Find user by email or username
+      const query = credentials.email 
+        ? { email: credentials.email.toLowerCase() }
+        : { username: credentials.username };
+      
+      const user = await UserModel.findOne(query);
 
       if (!user) {
-        throw new Error('Invalid email or password');
+        throw new Error('Invalid credentials');
       }
 
       // Verify password
@@ -116,7 +118,7 @@ export class AuthService {
       );
 
       if (!isPasswordValid) {
-        throw new Error('Invalid email or password');
+        throw new Error('Invalid credentials');
       }
 
       // Update last active

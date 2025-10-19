@@ -1,6 +1,34 @@
 # ML-E Tutoring App
 
-ML-E (pronounced "Melly") is a production-ready, multi-agentic AI web application designed to teach fundamental Machine Learning concepts to high school students (9th-10th grade) through an interactive, chat-based interface.
+ML-E (pronounced "Melly") is a production-ready, multi-agentic AI web application designed to teach fundamental Machine Learning concepts to high school students (9th-10th grade) through an interactive, chat-based interface with advanced error handling and system resilience.
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js (v18+) 
+- MongoDB (running locally)
+- Redis (running locally)
+- OpenAI API Key
+
+### Get Running in 3 Steps:
+
+1. **Install Dependencies**
+   ```bash
+   npm run install:all
+   ```
+
+2. **Add Your OpenAI API Key**
+   ```bash
+   # Edit backend/.env and add:
+   OPENAI_API_KEY=sk-your-openai-api-key-here
+   ```
+
+3. **Start the App**
+   ```bash
+   npm run dev
+   ```
+
+**Access:** http://localhost:3000 (Frontend) | http://localhost:3001/api (Backend)
 
 ## Project Structure
 

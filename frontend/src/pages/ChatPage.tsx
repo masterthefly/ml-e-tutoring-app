@@ -11,7 +11,14 @@ export const ChatPage: React.FC = () => {
     isConnected,
     isLoading,
     sendMessage,
+    refreshMessages,
+    sessionId,
   } = useChat();
+
+  // Refresh messages when component mounts (user navigates to chat page)
+  React.useEffect(() => {
+    refreshMessages();
+  }, [refreshMessages]);
 
   return (
     <div className="chat-page" role="main" aria-label="Chat with AI tutor">

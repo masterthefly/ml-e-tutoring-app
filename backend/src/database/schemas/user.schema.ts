@@ -45,10 +45,29 @@ const userSchema = new Schema<UserDocument>({
     required: true,
     minlength: 6
   },
+  firstName: {
+    type: String,
+    trim: true,
+    maxlength: 50
+  },
+  lastName: {
+    type: String,
+    trim: true,
+    maxlength: 50
+  },
   grade: {
     type: Number,
     required: true,
     enum: [9, 10]
+  },
+  learningInterests: [{
+    type: String,
+    trim: true,
+    maxlength: 100
+  }],
+  profileCompleted: {
+    type: Boolean,
+    default: false
   },
   createdAt: {
     type: Date,
