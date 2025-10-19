@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { authenticateToken, validateRequest, chatRateLimit } from '../middleware/index.js';
 import { logger } from '../utils/logger.js';
 import { AuthenticatedRequest } from '../types/auth.types.js';
-import { openaiService } from '../services/openai.service.js';
+import { bedrockService } from '../services/bedrock.service.js';
 import { authService } from '../services/auth.service.js';
 import Joi from 'joi';
 
@@ -54,8 +54,8 @@ router.post('/chat',
         logger.warn('Could not fetch user grade, using default:', error instanceof Error ? error.message : String(error));
       }
 
-      // Generate intelligent response using OpenAI
-      const agentResponse = await openaiService.generateMLResponse(message, userGrade);
+      // Generate intelligent response using AWS Bedrock
+      const agentResponse = await bedrockService.generateMLResponse(message, userGrade);
 
       const response = {
         message: agentResponse.message,

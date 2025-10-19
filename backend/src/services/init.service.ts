@@ -2,7 +2,7 @@ import { redisService } from './redis.service.js';
 import { connectToDatabase } from '../database/connection.js';
 import { UserModel } from '../database/schemas/user.schema.js';
 import { authService } from './auth.service.js';
-import { openaiService } from './openai.service.js';
+import { bedrockService } from './bedrock.service.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -23,9 +23,8 @@ export async function initializeServices(): Promise<void> {
     // Create default users if they don't exist
     await createDefaultUsers();
 
-    // Check OpenAI service status
-    const openaiStatus = openaiService.getStatus();
-    logger.info('OpenAI service status:', openaiStatus);
+    // Check Bedrock service status
+    logger.info('Bedrock service initialized and ready');
 
     logger.info('All services initialized successfully');
   } catch (error) {

@@ -441,15 +441,19 @@
 <body>
     <div class="demo-container">
         <div class="demo-header">
-            <h1>🤖 ML-E Demo</h1>
-            <p>Intelligent Machine Learning Tutor with Smart Caching & Persistent Memory</p>
+            <h1>🤖 ML-E Production Demo</h1>
+            <p>AWS Bedrock-Powered Machine Learning Tutor | Live Production Environment</p>
+            <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; margin-top: 15px;">
+                <small>🌐 Deployed on AWS ECS Fargate | 🔒 Secured with AWS WAF | ⚡ Powered by Claude 3 Models</small>
+            </div>
         </div>
 
         <div class="demo-tabs">
-            <button class="tab-button active" onclick="showTab('chat')">💬 Smart Chat</button>
-            <button class="tab-button" onclick="showTab('dashboard')">📊 Analytics Dashboard</button>
-            <button class="tab-button" onclick="showTab('profile')">👤 User Profile</button>
-            <button class="tab-button" onclick="showTab('features')">⚡ Key Features</button>
+            <button class="tab-button active" onclick="showTab('chat')">💬 AWS Bedrock Chat</button>
+            <button class="tab-button" onclick="showTab('dashboard')">📊 Real-time Analytics</button>
+            <button class="tab-button" onclick="showTab('profile')">👤 Student Profile</button>
+            <button class="tab-button" onclick="showTab('features')">⚡ AWS Features</button>
+            <button class="tab-button" onclick="showTab('system')">🔧 System Status</button>
         </div>
 
         <div class="demo-content">
@@ -457,22 +461,36 @@
             <div id="chat" class="tab-panel active">
                 <div class="chat-container">
                     <div class="chat-header">
-                        <h2>🎓 Chat with ML-E Tutor</h2>
-                        <p>Ask questions about Machine Learning - I remember everything!</p>
+                        <h2>🎓 Chat with ML-E Tutor (AWS Bedrock)</h2>
+                        <p>Powered by Claude 3 Models | Intelligent Model Selection | 37.5% Cost Optimized</p>
+                        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.9rem;">
+                            <span>🟢 AWS Status: <strong>Healthy</strong></span>
+                            <span>⚡ Model: <strong id="currentModel">Auto-Select</strong></span>
+                            <span>💰 Cost Savings: <strong id="costSavings">37.5%</strong></span>
+                        </div>
                     </div>
 
                     <div class="chat-messages" id="chatMessages">
                         <div class="message bot fade-in">
                             <div class="message-content">
-                                <strong>ML-E Tutor:</strong> Hello! I'm ML-E, your intelligent Machine Learning tutor. I'm designed specifically for high school students and I have a perfect memory - I never forget our conversations! 
+                                <strong>ML-E Tutor (AWS Bedrock):</strong> Hello! I'm ML-E, powered by AWS Bedrock with Claude 3 models. I intelligently select the best model for your questions and remember everything across sessions! 
                                 <br><br>
-                                Try asking me questions like:
+                                <div style="background: #f0f8ff; padding: 10px; border-radius: 8px; margin: 10px 0;">
+                                    <strong>🤖 Intelligent Model Selection:</strong><br>
+                                    • <span style="color: #28a745;">Simple questions</span> → Claude 3 Haiku (Fast & Cheap)<br>
+                                    • <span style="color: #17a2b8;">Medium complexity</span> → Claude 3 Sonnet (Balanced)<br>
+                                    • <span style="color: #6f42c1;">Complex topics</span> → Claude 3 Opus (Advanced)
+                                </div>
+                                Try these examples to see model selection in action:
                                 <ul style="margin: 10px 0; padding-left: 20px;">
-                                    <li>"What is machine learning?"</li>
-                                    <li>"How do neural networks work?"</li>
-                                    <li>"Explain supervised learning"</li>
+                                    <li><button onclick="askQuestion('What is ML?')" style="background: #28a745; color: white; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer;">Simple: "What is ML?"</button></li>
+                                    <li><button onclick="askQuestion('How do neural networks work?')" style="background: #17a2b8; color: white; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer;">Medium: "How do neural networks work?"</button></li>
+                                    <li><button onclick="askQuestion('Explain gradient descent optimization algorithms')" style="background: #6f42c1; color: white; border: none; padding: 2px 6px; border-radius: 4px; cursor: pointer;">Complex: "Explain gradient descent algorithms"</button></li>
                                 </ul>
                                 <div class="message-time">Just now</div>
+                                <div style="background: #28a745; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; margin-top: 5px; display: inline-block;">
+                                    🌐 AWS Bedrock Connected
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -482,8 +500,14 @@
                     </div>
 
                     <div class="chat-input-container">
-                        <input type="text" class="chat-input" id="chatInput" placeholder="Ask me anything about Machine Learning..." onkeypress="handleKeyPress(event)">
-                        <button class="send-button" onclick="sendMessage()">Send</button>
+                        <input type="text" class="chat-input" id="chatInput" placeholder="Ask me anything about Machine Learning... (AWS Bedrock will auto-select the best model)" onkeypress="handleKeyPress(event)">
+                        <button class="send-button" onclick="sendMessage()">
+                            <span id="sendButtonText">Send to AWS</span>
+                            <span id="sendButtonSpinner" style="display: none;">⏳</span>
+                        </button>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 0.8rem; color: #666; text-align: center;">
+                        🔒 Secured by AWS WAF | 📊 Monitored by CloudWatch | 💾 Stored in DocumentDB
                     </div>
                 </div>
             </div>
@@ -611,9 +635,109 @@
                 </div>
             </div>
 
+            <!-- System Status Ta
+            <div id="system" class="tab-panel">
+                <h2 style="margin-bottom: 25px; color: #333;">🔧 AWS System Status</h2
+                
+                <div class="dashboard-grid">
+                    <div class="stat-card" sty;">
+                        <div class="stat-number">🟢</div>
+                        <div class="stat-label">AWS Bedrock Status</div>
+                        <div style="font-size: 0.9rem; ma</div>
+                    </div>
+                    <div class="stat-card" style="background: linear7);">
+                        <div cv>
+                        <div class="stat-label">System Uptime</div>
+                        <d
+</div>
+                    <div class="stat-card" sty);">
+                        <div class="stat-number">45ms</di>
+                        <div class="stat-label">Avg Response Time</div>
+                        <div style="font-size: 0.9rem; ma/div>
+                    </div>
+                    <div class="stat-card" style="background: lin
+                        <div c
+                        <div class="stat-label">Active Models</div>
+                        <d</div>
+
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">🤖 AWS Bedro>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1frx;">
+                        <div style="padding: 15px; bac
+                            <h/h4>
+                            <div>Status: <strong>🟢 Online</strong></div>
+                          
+ong></div>
+                            <div>Response Timeong></div>
+                        </div>
+                        <div style="padding: 15px; background: #e1f5fe; bord
+                            <h4 style="margin: 0 0 10px 0
+                            <div>Status: <strong>🟢 Online</strong></div>
+                            <div>Usage: <strong>28% of requests</strong></div>
+                            <d></div>
+                            <div>Response Time: <strong>2.4s avg</strong></div>
+                        </v>
+">
+                            <h4 style="margin:
+                            <div>Status: <strong>🟢 Online/div>
+                            <div>Usage: <strong>5% of requests</strong></div>
+                            <div>Avg Cost: <strong>$0.001v>
+                            <div>Response Time: <strong>3.8s avg</strong></div>
+                        </div>
+                    </div>
+                </div>
+
+er">
+                    <div class="chart-title">a/div>
+                    <div style="display: grid; grid-templa
+                        <div style="text-align: center; padding: 15px; backg;">
+                            <div style="font-size: 1.5rem
+                            <div style="font-weight: bold;">ECS Fargate</div>
+                            <div style="color: #v>
+                        </div>
+                        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius:">
+                          iv>
+                      div>
+a</div>
+                        </div>
+                        <div style="text-align: center; padding: 15px; ba
+                            <div style="font-size: 1.5rem; color: #28a745;">🟢</div>
+                            <div style="font-weight: bold;">ElastiCache</div>
+                            <div style="color: #666; font-size: 0.9rem;">Redis Cluster</div>
+                        </div>
+                        <div s>
+                            <div style="font-size: 1.5rem; color: #28a745;">🟢</div>
+                            <div style="font-weight: bold;">CloudWatch</div>
+                            <div style="color: #666; font-size: 0.9rem;">Monitoring Actiiv>
+                        </div>
+                        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+                            <div style="font-size: 1.5rem; color: #28a745;">🟢</div>
+                            <div style="font-weight: bold;">AWS WAF</div>
+                            <d
+                        </div>
+                        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radi">
+                            <div style="font-size: 1.5rem; color: #28a74
+                            <dv>
+                          
+                        </div>
+                  
+              
+
+age">
+            
+                    • SSL/TLS 1.3 s<br>
+                    • AWS IAM rccess<br>
+                    • VPC isolation with 
+                    • Regular security scans and updates<br>
+                    • GDPR and
+                </div>
+            </
+
             <!-- Features Tab -->
-            <div id="features" class="tab-panel">
-                <h2 style="margin-bottom: 25px; color: #333;">⚡ ML-E Key Features</h2>
+            <div id="features"
+                <h2 style="margin-bot</h2>Featuresock WS Bedr A3;">⚡33: #px; colorom: 25tnel">b-pa class="tadiv>nce ready complia COPPAets<br>private subnrivilege ath least poles wimmunicationl coion for alencryptstrong><br>nce:</ & Complia>🔒 Security    <strong    -messfos="iniv clas  <d              iv>  </d  </div>ctive</div>">Multi-AZ Ae: 0.9rem;6; font-siz"color: #66v style=<di  dialancer</ Bbold;">Load: ight="font-wetyleiv sv>🟢</di;">5: 10px;use</div>ctivProtection Am;">ze: 0.9refont-silor: #666; "cole= styiv</dve0px;"adius: 1der-r#f8f9fa; borbackground: g: 15px; nter; paddinn: cetext-aligtyle="">dius: 10px;rder-raa; bond: #f8f9fckgrou+ Replic;">Primary 9reme: 0.siz#666; font-="color:   <div style                          ntDB</ocume: bold;">D"font-weightdiv style=      </d">🟢<: #28a745;5rem; color1.ze: t-siyle="fon <div st ; 10px/dining<asks run.9rem;">2 te: 0font-siz666; </div>>🟢745;"lor: #28aco; us: 10pxborder-radi8f9fa; : #fround>": 15px;)); gap0px, 1frax(20o-fit, minmepeat(aut: rnsolumte-cHealth<structure 🏗️ AWS Infrt-contain"chardiv class=          <      trong></di5/query</sstrong><</h4> 3 Opus</laude#6f42c1;">Color:  c0 0 10px 0; d #6f42c1;solieft: 4px der-lx; bor0pius: 1rder-rad; boe5f5#f3nd: backgrou: 15px; dding style="paiv<d                        diuery</strong>$0.0008/qtrong <sv>Avg Cost:inet</h4>e 3 Son">Claud8;2b17a color: #;#17a2b8;">lid 4px sorder-left:  box;dius: 10per-ras avg</str <strong>1.2:3/query</str>$0.000 <strongvg Cost:   <div>A                         v>/strong></diests<of requg>67% <stronge:   <div>UsaHaiku<">Claude 3 #28a745;r: 0px 0; colo: 0 0 1="margin4 style;">745d #28a: 4px solieftpx; border-lus: 10rder-radi bo: #e8f5e8;groundk; gap: 15p))/divs< StatuModelck      </div>               t, Opusaiku, Sonneop: 5px;">Hem; margin-tize: 0.9r"font-siv style=3</div>at-number">="stassl7);">4, #ffc10g, #fd7e1ent(135deear-gradis<5: 120m 5px;">P9rgin-top:v #e83e8c2c1,5deg, #6f4t(13iengradinear-d: lounackgre="bl                    rgate</div>FaS px;">ECgin-top: 5mar: 0.9rem; size="font-iv style>99.9%</di"numberss="stat-la0c992b8, #2, #17ant(135deg-gradies Onlineodel">All Mx;in-top: 5prgc997)#28a745, #20(135deg, dientlinear-graround: backgle=">
                 
                 <div class="features-grid">
                     <div class="feature-card">

@@ -3,7 +3,7 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger.js';
 import { redisService } from './redis.service.js';
-import { openaiService } from './openai.service.js';
+import { bedrockService } from './bedrock.service.js';
 import { authService } from './auth.service.js';
 import { analyticsService } from './analytics.service.js';
 import { SessionRepositoryImpl } from '../database/repositories/session.repository.js';
@@ -246,14 +246,14 @@ class WebSocketService {
         logger.warn('Could not fetch user grade, using default:', error instanceof Error ? error.message : String(error));
       }
 
-      // Generate intelligent response using OpenAI
-      const agentResponse = await openaiService.generateMLResponse(message.trim(), userGrade);
+      // Generate intelligent response using AWS Bedrock
+      const agentResponse = await bedrockService.generateMLResponse(message.trim(), userGrade);
 
       // Create agent response message
       const agentMessage: ChatMessage = {
-        id: `agent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `agent_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         userId: 'system',
-        username: agentResponse.agentName,
+        username: `ML-E (${agentResponse.model.includes('haiku') ? 'Fast' : 'Balanced'})`,
         message: agentResponse.message,
         timestamp: new Date(),
         sessionId,
@@ -271,7 +271,7 @@ class WebSocketService {
       // Stop typing indicator
       socket.emit('chat:typing', {
         userId: 'system',
-        username: agentResponse.agentName,
+        username: 'ML-E Tutor',
         isTyping: false
       });
 
@@ -294,10 +294,12 @@ class WebSocketService {
         });
       }
 
-      logger.info(`Agent response sent to user ${userId}`, {
+      logger.info(`Bedrock response sent to user ${userId}`, {
         confidence: agentResponse.confidence,
-        model: agentResponse.metadata?.model,
-        topic: agentResponse.metadata?.topic
+        model: agentResponse.model,
+        topic: agentResponse.metadata?.topic,
+        responseTime: agentResponse.responseTime,
+        tokensUsed: agentResponse.tokensUsed
       });
 
     } catch (error) {
